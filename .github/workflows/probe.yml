@@ -1,0 +1,25 @@
+name: probe
+on:
+  push:
+    branches: ["ci/probe-*"]
+  workflow_dispatch:
+jobs:
+  probe:
+    strategy:
+      fail-fast: false
+      matrix:
+        which: [release, main]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: install
+        run: |
+          pip install -q pandas numpy polars pyarrow statsmodels scipy orjson
+          if [ "${{ matrix.which }}" = "release" ]; then pip install -q plotly; else pip install -q "git+https://github.com/plotly/plotly.py@main"; fi
+          pip list 2>/dev/null | grep -iE "plotly|narwhals|pandas|polars|numpy"
+      - name: run
+        run: |
+          for f in *.py; do echo "=========== $f"; python $f || true; done

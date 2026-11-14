@@ -1,0 +1,66 @@
+name: ci px-facet-spacing-zero
+
+on:
+  push:
+    branches:
+      - ci/px-facet-spacing-zero
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v6
+      - run: |
+          uv venv
+          source .venv/bin/activate
+          uv sync --locked --extra dev_core
+          ruff --version
+          ruff format --check .
+          ruff check plotly/express/_core.py tests/test_optional/test_px/test_facets.py tests/test_optional/test_px/test_imshow.py
+
+  tests:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [baseline, fixed]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 3
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v6
+      - run: |
+          uv venv
+          source .venv/bin/activate
+          uv sync --locked --extra dev_optional --extra dev_pandas3
+      - name: Restore main's _core.py (baseline only)
+        if: matrix.variant == 'baseline'
+        run: |
+          git checkout HEAD~2 -- plotly/express/_core.py
+          git diff --stat HEAD -- plotly/express/_core.py
+      - name: New tests
+        run: |
+          source .venv/bin/activate
+          set +e
+          python -m pytest -rA -p no:cacheprovider \
+            "tests/test_optional/test_px/test_facets.py::test_facets_zero_spacing" \
+            "tests/test_optional/test_px/test_imshow.py::test_imshow_facet_spacing_zero" 2>&1 | tail -60
+          rc=${PIPESTATUS[0]}
+          echo "pytest exit code: $rc"
+          if [ "${{ matrix.variant }}" = baseline ]; then test $rc -eq 1; else test $rc -eq 0; fi
+      - name: Full px test directory
+        if: always()
+        run: |
+          source .venv/bin/activate
+          python -m pytest -q -p no:cacheprovider tests/test_optional/test_px 2>&1 | tail -30
+          exit ${PIPESTATUS[0]}

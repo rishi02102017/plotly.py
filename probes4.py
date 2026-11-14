@@ -19,8 +19,9 @@ for sp in [None, 0, 0.0, 1e-9, 0.05]:
 fig = px.scatter(df, x="total_bill", y="tip", facet_col="day", facet_col_wrap=2, facet_row_spacing=0)
 print("facet_col_wrap=2, facet_row_spacing=0: y domains", doms(fig, "y")[::2])
 
-fig = px.scatter_polar(df, r="tip", theta="day", facet_col="sex", facet_col_spacing=0)
-print("scatter_polar facet_col_spacing=0: polar domains", [tuple(round(v, 4) for v in fig.layout[k].domain.x) for k in ("polar", "polar2")])
+from plotly.subplots import make_subplots
+fig = make_subplots(rows=2, cols=2, horizontal_spacing=0, vertical_spacing=0)
+print("make_subplots spacing=0 (reference): x domains", doms(fig, "x")[:2], "y domains", doms(fig, "y")[::2])
 
 img = np.random.default_rng(0).random((2, 4, 4))
 fig = px.imshow(img, facet_col=0, facet_col_spacing=0)
